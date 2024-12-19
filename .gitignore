@@ -172,3 +172,5 @@ ENV/
 IN/
 OUT/
 Icon\r\r
+cookies.txt
+.DS_Store
