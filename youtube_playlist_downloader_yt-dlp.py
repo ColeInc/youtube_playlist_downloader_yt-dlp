@@ -2,6 +2,33 @@ import yt_dlp
 import os
 import ssl
 from typing import Optional
+import browser_cookie3
+
+def get_cookies_path() -> str:
+    """Create a temporary cookies file from browser cookies."""
+    print("Extracting cookies from your browsers...")
+    
+    # Try different browsers in order of popularity
+    browsers = [
+        ('chrome', browser_cookie3.chrome),
+        # ('firefox', browser_cookie3.firefox),
+        # ('edge', browser_cookie3.edge),
+        # ('opera', browser_cookie3.opera),
+        # ('safari', browser_cookie3.safari),
+    ]
+    
+    for browser_name, browser_func in browsers:
+        try:
+            print(f"Trying to get cookies from {browser_name}...")
+            cj = browser_func(domain_name=".youtube.com")
+            if len(list(cj)) > 0:
+                print(f"Successfully got cookies from {browser_name}")
+                return cj
+        except Exception as e:
+            print(f"Couldn't get cookies from {browser_name}: {str(e)}")
+    
+    print("Warning: Could not get cookies from any browser.")
+    return None
 
 def download_playlist(playlist_url: str, output_dir: Optional[str] = None) -> None:
     """
@@ -20,21 +47,29 @@ def download_playlist(playlist_url: str, output_dir: Optional[str] = None) -> No
     os.makedirs(output_dir, exist_ok=True)
     print(f"Using output directory: {output_dir}")
     
+    # Get cookies from browser
+    cookies = get_cookies_path()
+    
     # Configure yt-dlp options
     ydl_opts = {
-        'format': 'best[ext=mp4]',  # Best quality MP4
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Best quality MP4
         'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),  # Output template
         'ignoreerrors': True,  # Skip videos that can't be downloaded
-        'extract_flat': 'in_playlist',  # Extract info about playlist items
         'quiet': False,  # Show progress
         'progress': True,  # Show progress bar
         'no_warnings': False,  # Show warnings
         'nocheckcertificate': True,  # Skip HTTPS certificate validation
+        'verbose': True,  # Show detailed progress
+        'concurrent_fragments': 3,  # Download fragments in parallel
+        'merge_output_format': 'mp4',
         'postprocessors': [{
             'key': 'FFmpegVideoRemuxer',
             'preferedformat': 'mp4',
         }]
     }
+    
+    if cookies:
+        ydl_opts['cookiejar'] = cookies
     
     try:
         # Create unverified context for SSL
